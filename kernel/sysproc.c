@@ -15,7 +15,6 @@ sys_exit(void)
   kexit(n);
   return 0; // not reached
 }
-
 uint64
 sys_getpid(void)
 {
@@ -109,4 +108,23 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+//hello 1-st system call
+uint64
+sys_hello(void)
+{
+  printk("Hello from the kernel!\n");
+  return 0;
+}
+
+uint64
+sys_getproc(void)
+{
+  int pid;
+  uint64 up;
+
+  argint(0, &pid);
+  argaddr(1, &up);
+  return kgetproc(pid, up);
 }

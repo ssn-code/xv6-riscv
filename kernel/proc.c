@@ -42,7 +42,6 @@ proc_mapstacks(pagetable_t kpgtbl)
     kvmmap(kpgtbl, va, (uint64)pa, PGSIZE, PTE_R | PTE_W);
   }
 }
-
 // initialize the proc table.
 void
 procinit(void)
@@ -700,4 +699,31 @@ procdump(void)
     printk("%d %s %s", p->pid, state, p->name);
     printk("\n");
   }
+}
+
+// Retrieve process info by PID and copy to user structure up.
+int
+kgetproc(int pid, uint64 up)
+{
+  struct proc *p;
+  struct uproc kup;
+
+  for (p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if (p->state != UNUSED && p->pid == pid) {
+      kup.pid = p->pid;
+      kup.ppid = p->parent ? p->parent->pid : 0;
+      kup.state = p->state;
+      kup.sz = p->sz;
+      safestrcpy(kup.name, p->name, sizeof(kup.name));
+      release(&p->lock);
+
+      if (copyout(myproc()->pagetable, myproc()->sz, up, (char *)&kup,
+                  sizeof(kup)) < 0)
+        return -1;
+      return 0;
+    }
+    release(&p->lock);
+  }
+  return -1;
 }
