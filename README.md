@@ -1,6 +1,6 @@
 # Custom System Calls in xv6-RISCV
 
-This document describes the custom system calls added to this xv6-RISCV codebase, along with a detailed list of all relative file modifications across the kernel and user space.
+This document describes the custom system calls and user-space commands added to this xv6-RISCV codebase. It also explains which commands use the new syscalls and which use xv6's existing file-system interface.
 
 ---
 
@@ -35,9 +35,59 @@ struct uproc {
 
 ---
 
-## 3. Relative Edits Across Codebase Files
+## 3. Added User Commands
 
-Below is the complete trace of files modified and added to implement these system calls:
+| Command | Purpose | Relationship to syscalls |
+| :--- | :--- | :--- |
+| `hello` | Calls `hello()` and demonstrates kernel-to-console output. | Uses the new `hello()` syscall. |
+| `getproctest [pid]` | Looks up one process and also checks that an invalid PID fails. | Uses the new `getproc()` syscall. |
+| `ps` | Lists active processes with PID, parent PID, state, memory size, and name. | Calls `getproc()` once for each possible PID. |
+| `edit <filename>` | A small interactive text editor. It loads a file, appends entered lines, saves with `:s`, prints with `:p`, clears with `:c`, and exits with `:q`. | Does **not** add a syscall. It uses existing `open`, `read`, `write`, and `close` syscalls. |
+
+`ps` is new in this project; it was not an existing xv6 command in this repository.
+
+---
+
+## 4. Command Reference
+
+### `hello`
+
+**Usage:** `hello`
+
+This is the smallest syscall demonstration program. It invokes `hello()`, which transfers control to `sys_hello()` in the kernel. The kernel prints `Hello from the kernel!` to the xv6 console, then the command exits.
+
+### `getproctest [pid]`
+
+**Usage:** `getproctest` or `getproctest <pid>`
+
+Without an argument, the command queries information about itself. With a PID, it queries that process instead. It prints the returned PID, parent PID, process state, memory size, and name. It also always queries PID `9999` to demonstrate that `getproc()` returns `-1` when no matching process exists.
+
+### `ps`
+
+**Usage:** `ps`
+
+This command is a simple process viewer. It checks PIDs 1 through 256, calls `getproc()` for each PID, and prints one row for every active process. The output includes PID, parent PID, readable process state, memory size, and program name. Its process information comes entirely from the new `getproc()` syscall.
+
+### `edit <filename>`
+
+**Usage:** `edit <filename>`
+
+This command is a small line-based text editor. It loads the named file when it exists; otherwise, it starts with an empty buffer and creates the file when it is saved. Any normal text entered at the `edit>` prompt is appended as a new line.
+
+| Input | Action |
+| :--- | :--- |
+| `:s` | Save the current buffer to the named file. |
+| `:p` | Print the editor interface and current buffer. |
+| `:c` | Clear the in-memory buffer. |
+| `:q` | Exit the editor. |
+
+`edit` does not introduce a new kernel syscall. It implements file editing with xv6's existing `open`, `read`, `write`, and `close` syscalls.
+
+---
+
+## 5. Kernel and User-Space Changes
+
+Below is the complete trace of files modified and added for the syscalls and commands:
 
 | File Path | Description of Edits |
 | :--- | :--- |
@@ -51,11 +101,13 @@ Below is the complete trace of files modified and added to implement these syste
 | **`user/usys.pl`** | Added `entry("hello");` and `entry("getproc");` to auto-generate Assembly stubs in `usys.S`. |
 | **`user/hello.c`** | *(New File)* User program demonstrating the `hello()` system call. |
 | **`user/getproctest.c`** | *(New File)* User program testing `getproc()` for both valid process PIDs and non-existent PIDs. |
-| **`Makefile`** | Added `$U/_hello` and `$U/_getproctest` to `UPROGS` so user binaries are compiled and included in `fs.img`. |
+| **`user/ps.c`** | *(New File)* Process-listing command built on `getproc()`. |
+| **`user/edit.c`** | *(New File)* Interactive file editor built with existing file syscalls. |
+| **`Makefile`** | Added `$U/_hello`, `$U/_getproctest`, `$U/_ps`, and `$U/_edit` to `UPROGS` so the programs are compiled and included in `fs.img`. |
 
 ---
 
-## 4. How to Build and Run
+## 6. How to Build and Run
 
 To compile the kernel, build the disk image, and run in QEMU:
 
@@ -101,5 +153,3 @@ $ cat notes.txt
 Hello xv6 text editor!
 Line 2 of notes.
 ```
-
-
