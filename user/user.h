@@ -30,6 +30,9 @@ int hello(void);
 int getproc(int, struct uproc *);
 int sysinfo(struct sysinfo *);
 int getppid(void);
+int trace(int);
+int history(int, struct syscall_stat *);
+int sleep(int);
 
 // ulib.c
 int stat(const char *, struct stat *);

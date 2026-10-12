@@ -98,6 +98,33 @@ sys_pause(void)
   return 0;
 }
 
+// sleep() is the user-facing timer sleep syscall. It mirrors pause() so both
+// interfaces wait on the clock-tick channel and can be interrupted by kill.
+uint64
+sys_sleep(void)
+{
+  int n;
+  uint ticks0;
+
+  argint(0, &n);
+  if (n < 0)
+    return -1;
+  acquire(&tickslock);
+  ticks0 = ticks;
+  while (ticks - ticks0 < n) {
+    if (killed(myproc())) {
+      release(&tickslock);
+      return -1;
+    }
+    sleep_prepare(&ticks);
+    release(&tickslock);
+    sleep();
+    acquire(&tickslock);
+  }
+  release(&tickslock);
+  return 0;
+}
+
 uint64
 sys_kill(void)
 {
@@ -153,6 +180,35 @@ sys_sysinfo(void)
   info.nproc = nproc();     // Count active entries in the process table.
   p = myproc();
   if (copyout(p->pagetable, p->sz, addr, (char *)&info, sizeof(info)) < 0)
+    return -1;
+  return 0;
+}
+
+// trace() selects syscall numbers to print for the calling process.
+uint64
+sys_trace(void)
+{
+  int mask;
+
+  argint(0, &mask);
+  myproc()->trace_mask = mask;
+  return 0;
+}
+
+// history() copies the counters for one syscall number to user memory.
+uint64
+sys_history(void)
+{
+  int num;
+  uint64 addr;
+  struct syscall_stat stat;
+  struct proc *p = myproc();
+
+  argint(0, &num);
+  argaddr(1, &addr);
+  if (getsyscallstat(num, &stat) < 0)
+    return -1;
+  if (copyout(p->pagetable, p->sz, addr, (char *)&stat, sizeof(stat)) < 0)
     return -1;
   return 0;
 }

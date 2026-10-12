@@ -43,8 +43,11 @@ entry("sbrk");
 entry("pause");
 entry("uptime");
 entry("sync");
-// Generate user-to-kernel ecall stubs for the custom syscalls.
+# Generate user-to-kernel ecall stubs for the custom syscalls.
 entry("hello");
 entry("getproc");
 entry("sysinfo");
 entry("getppid");
+entry("trace");
+entry("history");
+entry("sleep");

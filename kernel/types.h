@@ -23,3 +23,9 @@ struct sysinfo {
   uint64 freemem;
   uint64 nproc;
 };
+
+// Per-syscall counters returned by history() to a user program.
+struct syscall_stat {
+  uint64 count; // Number of completed calls.
+  uint64 ticks; // Total timer ticks spent in the kernel handlers.
+};

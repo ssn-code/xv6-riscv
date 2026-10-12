@@ -7,6 +7,42 @@
 #include "syscall.h"
 #include "defs.h"
 
+static struct spinlock syscall_stats_lock;
+static struct syscall_stat syscall_stats[SYS_sleep + 1];
+
+// Names are used by trace() and must match the syscall number table.
+static char *syscall_names[] = {
+  [SYS_fork] = "fork", [SYS_exit] = "exit", [SYS_wait] = "wait",
+  [SYS_pipe] = "pipe", [SYS_read] = "read", [SYS_kill] = "kill",
+  [SYS_exec] = "exec", [SYS_fstat] = "fstat", [SYS_chdir] = "chdir",
+  [SYS_dup] = "dup", [SYS_getpid] = "getpid", [SYS_sbrk] = "sbrk",
+  [SYS_pause] = "pause", [SYS_uptime] = "uptime", [SYS_open] = "open",
+  [SYS_write] = "write", [SYS_mknod] = "mknod", [SYS_unlink] = "unlink",
+  [SYS_link] = "link", [SYS_mkdir] = "mkdir", [SYS_close] = "close",
+  [SYS_sync] = "sync", [SYS_hello] = "hello", [SYS_getproc] = "getproc",
+  [SYS_sysinfo] = "sysinfo", [SYS_getppid] = "getppid",
+  [SYS_trace] = "trace", [SYS_history] = "history", [SYS_sleep] = "sleep",
+};
+
+// Initialize the lock that protects global syscall history counters.
+void
+syscallinit(void)
+{
+  initlock(&syscall_stats_lock, "syscall_stats");
+}
+
+// Copy one statistic while holding its lock; used by sys_history().
+int
+getsyscallstat(int num, struct syscall_stat *stat)
+{
+  if (num <= 0 || num >= NELEM(syscall_stats) || syscall_names[num] == 0)
+    return -1;
+  acquire(&syscall_stats_lock);
+  *stat = syscall_stats[num];
+  release(&syscall_stats_lock);
+  return 0;
+}
+
 // Fetch the uint64 at addr from the current process.
 int
 fetchaddr(uint64 addr, uint64 *ip)
@@ -108,6 +144,9 @@ extern uint64 sys_hello(void);
 extern uint64 sys_getproc(void);
 extern uint64 sys_sysinfo(void);
 extern uint64 sys_getppid(void);
+extern uint64 sys_trace(void);
+extern uint64 sys_history(void);
+extern uint64 sys_sleep(void);
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -140,6 +179,9 @@ static uint64 (*syscalls[])(void) = {
   [SYS_getproc] = sys_getproc,
   [SYS_sysinfo] = sys_sysinfo,
   [SYS_getppid] = sys_getppid,
+  [SYS_trace]   = sys_trace,
+  [SYS_history] = sys_history,
+  [SYS_sleep]   = sys_sleep,
   // clang-format on
 };
 
@@ -148,13 +190,34 @@ void
 syscall(void)
 {
   int num;
+  uint start_ticks;
+  uint elapsed_ticks;
   struct proc *p = myproc();
 
   num = p->trapframe->a7;
   if (num > 0 && num < NELEM(syscalls) && syscalls[num]) {
+    // Measure only time spent in the kernel handler, in timer ticks.
+    acquire(&tickslock);
+    start_ticks = ticks;
+    release(&tickslock);
+
     // Use num to lookup the system call function for num, call it,
     // and store its return value in p->trapframe->a0
     p->trapframe->a0 = syscalls[num]();
+
+    acquire(&tickslock);
+    elapsed_ticks = ticks - start_ticks;
+    release(&tickslock);
+
+    acquire(&syscall_stats_lock);
+    syscall_stats[num].count++;
+    syscall_stats[num].ticks += elapsed_ticks;
+    release(&syscall_stats_lock);
+
+    // trace() prints completed calls selected by this process's bitmask.
+    if (p->trace_mask & (1U << num))
+      printk("%d: syscall %s -> %ld\n", p->pid, syscall_names[num],
+             p->trapframe->a0);
   } else {
     printk("%d %s: unknown sys call %d\n", p->pid, p->name, num);
     p->trapframe->a0 = -1;

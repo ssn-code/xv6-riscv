@@ -147,6 +147,11 @@ uint64          sys_hello(void);
 uint64          sys_getproc(void);
 uint64          sys_sysinfo(void);
 uint64          sys_getppid(void);
+uint64          sys_trace(void);
+uint64          sys_history(void);
+uint64          sys_sleep(void);
+void            syscallinit(void);
+int             getsyscallstat(int, struct syscall_stat *);
 
 // trap.c
 extern uint     ticks;

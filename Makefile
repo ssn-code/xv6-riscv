@@ -156,6 +156,9 @@ UPROGS=\
 	$U/_sysinfotest\
 	$U/_ps\
 	$U/_edit\
+	$U/_trace\
+	$U/_history\
+	$U/_sleep\
 
 
 

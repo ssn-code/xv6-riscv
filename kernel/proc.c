@@ -165,6 +165,7 @@ freeproc(struct proc *p)
   p->name[0] = 0;
   p->chan = 0;
   p->killed = 0;
+  p->trace_mask = 0;
   p->xstate = 0;
   p->state = UNUSED;
 }
@@ -287,6 +288,8 @@ kfork(void)
   np->cwd = idup(p->cwd);
 
   safestrcpy(np->name, p->name, sizeof(p->name));
+  // A traced process passes its tracing configuration to its child.
+  np->trace_mask = p->trace_mask;
 
   pid = np->pid;
 

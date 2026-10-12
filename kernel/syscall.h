@@ -26,3 +26,6 @@
 #define SYS_getproc 24
 #define SYS_sysinfo 25
 #define SYS_getppid 26
+#define SYS_trace 27
+#define SYS_history 28
+#define SYS_sleep 29

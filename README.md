@@ -30,6 +30,24 @@ This document describes the custom system calls and user-space commands added to
 - **Description:** Returns the current process's parent PID, or `-1` if the process has no parent.
 - **User Program:** `getppid` (`user/getppid.c`)
 
+### `trace()` (Syscall #27)
+- **Signature (User):** `int trace(int mask)`
+- **Syscall Number:** `SYS_trace` (27)
+- **Description:** Enables kernel trace lines for syscall numbers whose bits are set in `mask`. The mask belongs to the calling process and is inherited by a child created with `fork()`.
+- **User Program:** `trace` (`user/trace.c`)
+
+### `history()` (Syscall #28)
+- **Signature (User):** `int history(int syscall_number, struct syscall_stat *stat)`
+- **Syscall Number:** `SYS_history` (28)
+- **Description:** Copies the completed-call count and accumulated handler time in timer ticks for one syscall number into `struct syscall_stat`. Returns `-1` for an invalid number or an invalid destination address.
+- **User Program:** `history` (`user/history.c`)
+
+### `sleep()` (Syscall #29)
+- **Signature (User):** `int sleep(int ticks)`
+- **Syscall Number:** `SYS_sleep` (29)
+- **Description:** Blocks the calling process until at least `ticks` timer ticks pass. Returns `-1` for a negative tick count or if the process is killed while waiting.
+- **User Program:** `sleep` (`user/sleep.c`)
+
 In this version, `hello()` also differs from its original implementation: `sys_hello()` prints the kernel greeting and returns `42` instead of `0`.
 
 ---
@@ -55,6 +73,14 @@ struct sysinfo {
 };
 ```
 
+### `struct syscall_stat` (`kernel/types.h`)
+```c
+struct syscall_stat {
+  uint64 count;  // Number of completed calls
+  uint64 ticks;  // Total time in the kernel handler
+};
+```
+
 ---
 
 ## 3. Added User Commands
@@ -65,6 +91,9 @@ struct sysinfo {
 | `getppid` | Prints the parent PID of the running command process. | Uses the new `getppid()` syscall. |
 | `getproctest [pid]` | Looks up one process and also checks that an invalid PID fails. | Uses the new `getproc()` syscall. |
 | `sysinfotest` | Prints free physical memory and the number of active processes. | Uses the new `sysinfo()` syscall. |
+| `trace <mask> <command> [args ...]` | Runs a command while printing selected completed system calls. | Uses the new `trace()` syscall. |
+| `history <syscall-number>` | Prints the invocation count and kernel tick total for one syscall. | Uses the new `history()` syscall. |
+| `sleep <ticks>` | Waits for a specified number of timer ticks. | Uses the new `sleep()` syscall. |
 | `ps` | Lists active processes with PID, parent PID, state, memory size, and name. | Calls `getproc()` once for each possible PID. |
 | `edit <filename>` | A small interactive text editor. It loads a file, appends entered lines, saves with `:s`, prints with `:p`, clears with `:c`, and exits with `:q`. | Does **not** add a syscall. It uses existing `open`, `read`, `write`, and `close` syscalls. |
 
@@ -163,6 +192,46 @@ Free memory: 127987712 bytes
 Active processes: 3
 ```
 
+### `trace <mask> <command> [args ...]`
+
+**Usage:** `trace <mask> <command> [args ...]`
+
+`mask` selects syscall numbers with `1 << syscall-number`. `trace` sets the mask and then runs the requested command with `exec()`. The command inherits the mask, and matching calls are printed by the kernel as `PID: syscall name -> return-value`.
+
+For example, `hello` is syscall 23, so its mask is `1 << 23 = 8388608`:
+```
+$ trace 8388608 hello
+Hello from the kernel!
+3: syscall hello -> 42
+hello() returned 42
+```
+
+### `history <syscall-number>`
+
+**Usage:** `history <syscall-number>`
+
+Prints the cumulative completed-call count and total handler duration in timer ticks for one syscall number. The statistics begin at kernel boot. The current `history()` call is included only after it returns, so the value shown for syscall 28 excludes the query that produced it.
+
+Example, after using `hello` at least once:
+```
+$ history 23
+Syscall 23
+Count: 1
+Kernel ticks: 0
+```
+
+### `sleep <ticks>`
+
+**Usage:** `sleep <ticks>`
+
+Blocks this process for at least the requested number of timer ticks. xv6 generates roughly 10 ticks per second, so `sleep 20` waits about two seconds. The command produces no output when it succeeds.
+
+**Example:**
+```
+$ sleep 20
+$
+```
+
 ### `edit <filename>`
 
 **Usage:** `edit <filename>`
@@ -187,18 +256,23 @@ Below is the complete trace of files modified and added for the syscalls and com
 | File Path | Description of Edits |
 | :--- | :--- |
 | **`kernel/types.h`** | Added `struct uproc` definition so it is available across kernel and user space. |
+| **`kernel/proc.h`** | Added the per-process `trace_mask` that selects trace output. |
 | **`kernel/kalloc.c`** | Added `freemem()` to count free physical-memory bytes while holding the allocator lock. |
 | **`kernel/proc.c`** | Implemented `kgetproc(int pid, uint64 up)` to scan the `proc[NPROC]` table under `p->lock`, populate `struct uproc`, and safely copy data to user memory using `copyout()`. Added `nproc()` to count active process-table entries safely. |
-| **`kernel/syscall.h`** | Defines custom syscall numbers `SYS_hello` (23), `SYS_getproc` (24), `SYS_sysinfo` (25), and `SYS_getppid` (26). |
-| **`kernel/syscall.c`** | Declares custom syscall handlers and registers `hello`, `getproc`, `sysinfo`, and `getppid` in the `syscalls[]` dispatch table. |
-| **`kernel/defs.h`** | Declared `kgetproc()`, `freemem()`, and `nproc()` for use across kernel files. |
-| **`kernel/sysproc.c`** | Implements `sys_hello()`, `sys_getproc()`, `sys_sysinfo()`, and `sys_getppid()`. `sys_sysinfo()` collects memory and process counts, then copies the result to user memory. |
-| **`user/user.h`** | Declares user-level prototypes for `hello()`, `getproc()`, `sysinfo()`, and `getppid()`. |
-| **`user/usys.pl`** | Generates assembly stubs for `hello`, `getproc`, `sysinfo`, and `getppid`. |
+| **`kernel/syscall.h`** | Defines custom syscall numbers 23 through 29. |
+| **`kernel/syscall.c`** | Registers all custom handlers, tracks per-syscall statistics, and emits selected trace lines. |
+| **`kernel/defs.h`** | Declares the custom syscall helpers and handlers for use across kernel files. |
+| **`kernel/sysproc.c`** | Implements the custom syscall handlers, including tracing, history retrieval, and tick-based sleeping. |
+| **`kernel/main.c`** | Initializes the lock that protects syscall-history counters. |
+| **`user/user.h`** | Declares every custom user-level syscall interface. |
+| **`user/usys.pl`** | Generates assembly stubs for every custom syscall. |
 | **`user/hello.c`** | *(New File)* User program demonstrating the `hello()` system call. |
 | **`user/getppid.c`** | *(New File)* User program testing that `getppid()` returns a positive parent PID. |
 | **`user/getproctest.c`** | *(New File)* User program testing `getproc()` for both valid process PIDs and non-existent PIDs. |
 | **`user/sysinfotest.c`** | *(New File)* User program that prints the `sysinfo()` result. |
+| **`user/trace.c`** | *(New File)* Runs a command with a selected syscall trace mask. |
+| **`user/history.c`** | *(New File)* Prints syscall usage statistics. |
+| **`user/sleep.c`** | *(New File)* Waits for a requested number of timer ticks. |
 | **`user/ps.c`** | *(New File)* Process-listing command built on `getproc()`. |
 | **`user/edit.c`** | *(New File)* Interactive file editor built with existing file syscalls. |
 | **`Makefile`** | Adds `$U/_hello`, `$U/_getppid`, `$U/_getproctest`, `$U/_sysinfotest`, `$U/_ps`, and `$U/_edit` to `UPROGS` so the programs are compiled and included in `fs.img`. |
