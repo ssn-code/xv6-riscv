@@ -22,6 +22,14 @@ sys_getpid(void)
 }
 
 uint64
+sys_getppid(void)
+{
+  struct proc *p = myproc();
+
+  return p->parent ? p->parent->pid : -1;
+}
+
+uint64
 sys_fork(void)
 {
   return kfork();
@@ -115,7 +123,7 @@ uint64
 sys_hello(void)
 {
   printk("Hello from the kernel!\n");
-  return 0;
+  return 42;
 }
 
 uint64

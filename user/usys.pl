@@ -46,3 +46,4 @@ entry("sync");
 entry("hello");
 entry("getproc");
 entry("sysinfo");
+entry("getppid");

@@ -28,7 +28,7 @@ int sync(void);
 int hello(void);
 int getproc(int, struct uproc *);
 int sysinfo(struct sysinfo *);
-
+int getppid(void);
 
 // ulib.c
 int stat(const char *, struct stat *);
