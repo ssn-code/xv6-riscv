@@ -20,6 +20,7 @@ main(int argc, char *argv[])
   printf("PID\tPPID\tSTATE\t\tSIZE\tNAME\n");
   printf("---------------------------------------------------\n");
 
+  // Query each possible PID through getproc(); inactive PIDs return -1.
   for (pid = 1; pid <= 256; pid++) {
     if (getproc(pid, &info) == 0) {
       char *st = (info.state >= 0 && info.state <= 5) ? states[info.state] : "UNKNOWN ";

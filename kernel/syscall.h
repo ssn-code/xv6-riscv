@@ -21,6 +21,7 @@
 #define SYS_mkdir  20
 #define SYS_close  21
 #define SYS_sync   22
+// Numbers reserved for the custom syscalls added by this project.
 #define SYS_hello  23
 #define SYS_getproc 24
 #define SYS_sysinfo 25

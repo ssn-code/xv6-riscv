@@ -129,6 +129,7 @@ mkfs/mkfs: mkfs/mkfs.c $K/fs.h $K/param.h
 # http://www.gnu.org/software/make/manual/html_node/Chained-Rules.html
 .PRECIOUS: %.o
 
+# UPROGS includes the custom-syscall commands listed near the end of this list.
 UPROGS=\
 	$U/_cat\
 	$U/_echo\

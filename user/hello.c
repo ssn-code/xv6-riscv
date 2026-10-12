@@ -4,6 +4,7 @@
 int
 main(void)
 {
+  // hello() prints in the kernel and returns a value to this program.
   int result = hello();
 
   if (result != 42) {

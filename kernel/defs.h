@@ -104,8 +104,8 @@ void            yield(void);
 int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
 int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 void            procdump(void);
-int             kgetproc(int, uint64);
-uint64          nproc(void);
+int             kgetproc(int, uint64); // Kernel helper for getproc().
+uint64          nproc(void);           // Kernel helper for sysinfo().
 
 
 // swtch.S
@@ -141,8 +141,12 @@ void            argaddr(int, uint64 *);
 int             fetchstr(uint64, char*, int);
 int             fetchaddr(uint64, uint64*);
 void            syscall();
-// syscall prototypes
+// Custom syscall handler declarations. The dispatcher also declares them
+// locally because it maps each syscall number to its handler.
 uint64          sys_hello(void);
+uint64          sys_getproc(void);
+uint64          sys_sysinfo(void);
+uint64          sys_getppid(void);
 
 // trap.c
 extern uint     ticks;

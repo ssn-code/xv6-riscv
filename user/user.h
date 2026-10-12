@@ -25,6 +25,7 @@ char *sys_sbrk(int, int);
 int pause(int);
 int uptime(void);
 int sync(void);
+// User-facing declarations for the custom kernel syscalls.
 int hello(void);
 int getproc(int, struct uproc *);
 int sysinfo(struct sysinfo *);

@@ -81,7 +81,8 @@ kalloc(void)
   return (void *)r;
 }
 
-// Return the number of free physical-memory bytes.
+// sysinfo() uses this helper to report free physical-memory bytes.
+// The allocator lock keeps the free-list traversal consistent.
 uint64
 freemem(void)
 {

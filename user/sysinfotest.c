@@ -6,6 +6,7 @@ main(void)
 {
   struct sysinfo info;
 
+  // sysinfo() fills this user-space structure with a kernel snapshot.
   if (sysinfo(&info) < 0) {
     fprintf(2, "sysinfotest: sysinfo failed\n");
     exit(1);

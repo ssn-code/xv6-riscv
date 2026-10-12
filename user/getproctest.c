@@ -5,12 +5,14 @@ int
 main(int argc, char *argv[])
 {
   struct uproc info;
+  // With no argument, inspect this test process itself.
   int pid = getpid();
 
   if (argc > 1) {
     pid = atoi(argv[1]);
   }
 
+  // getproc() asks the kernel to copy a process snapshot into info.
   printf("Testing getproc for PID %d...\n", pid);
   if (getproc(pid, &info) == 0) {
     printf("getproc succeeded:\n");

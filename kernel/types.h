@@ -9,6 +9,7 @@ typedef unsigned long uint64;
 
 typedef uint64 pde_t;
 
+// Process information copied from the kernel to a getproc() caller.
 struct uproc {
   int pid;
   int ppid;
@@ -17,6 +18,7 @@ struct uproc {
   char name[16];
 };
 
+// System-wide values copied from the kernel to a sysinfo() caller.
 struct sysinfo {
   uint64 freemem;
   uint64 nproc;

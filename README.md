@@ -74,6 +74,9 @@ struct sysinfo {
 
 ## 4. Command Reference
 
+Start xv6 with `make qemu`. At the xv6 shell (`$`), run the commands below.
+The numeric values in the examples, such as PIDs and free memory, vary by run.
+
 ### `hello`
 
 **Usage:** `hello`
@@ -82,11 +85,24 @@ This is the smallest syscall demonstration program. It invokes `hello()`, which 
 
 The syscall returns `42`; `hello` checks this value, prints `hello() returned 42`, and exits with an error status if the value differs.
 
+**Example:**
+```
+$ hello
+Hello from the kernel!
+hello() returned 42
+```
+
 ### `getppid`
 
 **Usage:** `getppid`
 
 Prints the parent PID returned by `getppid()`. The test program reports an error if the result is not positive. The exact PID depends on the process that launches the command.
+
+**Example:**
+```
+$ getppid
+getppid() returned 1
+```
 
 ### `getproctest [pid]`
 
@@ -94,17 +110,58 @@ Prints the parent PID returned by `getppid()`. The test program reports an error
 
 Without an argument, the command queries information about itself. With a PID, it queries that process instead. It prints the returned PID, parent PID, process state, memory size, and name. It also always queries PID `9999` to demonstrate that `getproc()` returns `-1` when no matching process exists.
 
+**Examples:**
+```
+$ getproctest
+Testing getproc for PID 4...
+getproc succeeded:
+  PID: 4
+  PPID: 1
+  State: 4
+  Size: 4096 bytes
+  Name: getproctest
+getproc correctly failed for non-existent PID 9999
+
+$ getproctest 1
+Testing getproc for PID 1...
+getproc succeeded:
+  PID: 1
+  PPID: 0
+  State: 2
+  Size: 4096 bytes
+  Name: init
+getproc correctly failed for non-existent PID 9999
+```
+
 ### `ps`
 
 **Usage:** `ps`
 
 This command is a simple process viewer. It checks PIDs 1 through 256, calls `getproc()` for each PID, and prints one row for every active process. The output includes PID, parent PID, readable process state, memory size, and program name. Its process information comes entirely from the new `getproc()` syscall.
 
+**Example:**
+```
+$ ps
+PID     PPID    STATE           SIZE    NAME
+---------------------------------------------------
+1       0       SLEEPING        4096    init
+2       1       SLEEPING        4096    sh
+3       2       RUNNING         4096    ps
+Total active processes: 3
+```
+
 ### `sysinfotest`
 
 **Usage:** `sysinfotest`
 
 This command calls `sysinfo()` and prints the returned system snapshot. `Free memory` is calculated by walking the allocator's free-page list while holding its lock. `Active processes` is calculated by checking each process-table entry while holding that process's lock.
+
+**Example:**
+```
+$ sysinfotest
+Free memory: 127987712 bytes
+Active processes: 3
+```
 
 ### `edit <filename>`
 

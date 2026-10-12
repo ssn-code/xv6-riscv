@@ -701,7 +701,8 @@ procdump(void)
   }
 }
 
-// Retrieve process info by PID and copy to user structure up.
+// Kernel-side implementation of getproc(): find pid, snapshot its fields
+// while holding its lock, then copy that snapshot to the caller's address.
 int
 kgetproc(int pid, uint64 up)
 {
@@ -728,7 +729,7 @@ kgetproc(int pid, uint64 up)
   return -1;
 }
 
-// Return the number of process-table entries that are in use.
+// sysinfo() uses this helper to count non-UNUSED process-table entries.
 uint64
 nproc(void)
 {

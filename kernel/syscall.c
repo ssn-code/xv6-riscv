@@ -103,6 +103,7 @@ extern uint64 sys_link(void);
 extern uint64 sys_mkdir(void);
 extern uint64 sys_close(void);
 extern uint64 sys_sync(void);
+// Handlers for the custom syscall numbers declared in syscall.h.
 extern uint64 sys_hello(void);
 extern uint64 sys_getproc(void);
 extern uint64 sys_sysinfo(void);
@@ -134,6 +135,7 @@ static uint64 (*syscalls[])(void) = {
   [SYS_mkdir]   = sys_mkdir,
   [SYS_close]   = sys_close,
   [SYS_sync]    = sys_sync,
+  // Connect each custom syscall number to its kernel implementation.
   [SYS_hello]   = sys_hello,
   [SYS_getproc] = sys_getproc,
   [SYS_sysinfo] = sys_sysinfo,

@@ -21,11 +21,13 @@ sys_getpid(void)
   return myproc()->pid;
 }
 
+// getppid() returns the PID of the calling process's parent.
 uint64
 sys_getppid(void)
 {
   struct proc *p = myproc();
 
+  // A process without a parent (for example init) has no parent PID.
   return p->parent ? p->parent->pid : -1;
 }
 
@@ -118,7 +120,7 @@ sys_uptime(void)
   return xticks;
 }
 
-//hello 1-st system call
+// hello() demonstrates a no-argument system call and a return value.
 uint64
 sys_hello(void)
 {
@@ -132,11 +134,13 @@ sys_getproc(void)
   int pid;
   uint64 up;
 
+  // Read the PID and destination struct pointer supplied by user space.
   argint(0, &pid);
   argaddr(1, &up);
   return kgetproc(pid, up);
 }
 
+// Fill a sysinfo snapshot and copy it into the calling process's memory.
 uint64
 sys_sysinfo(void)
 {
@@ -145,8 +149,8 @@ sys_sysinfo(void)
   struct proc *p;
 
   argaddr(0, &addr);
-  info.freemem = freemem();
-  info.nproc = nproc();
+  info.freemem = freemem(); // Count currently free allocator pages.
+  info.nproc = nproc();     // Count active entries in the process table.
   p = myproc();
   if (copyout(p->pagetable, p->sz, addr, (char *)&info, sizeof(info)) < 0)
     return -1;

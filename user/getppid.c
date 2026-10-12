@@ -4,6 +4,7 @@
 int
 main(void)
 {
+  // Ask the kernel for the PID of this command's parent process.
   int parent_pid = getppid();
 
   if (parent_pid <= 0) {
