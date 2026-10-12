@@ -128,3 +128,19 @@ sys_getproc(void)
   argaddr(1, &up);
   return kgetproc(pid, up);
 }
+
+uint64
+sys_sysinfo(void)
+{
+  uint64 addr;
+  struct sysinfo info;
+  struct proc *p;
+
+  argaddr(0, &addr);
+  info.freemem = freemem();
+  info.nproc = nproc();
+  p = myproc();
+  if (copyout(p->pagetable, p->sz, addr, (char *)&info, sizeof(info)) < 0)
+    return -1;
+  return 0;
+}

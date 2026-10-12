@@ -27,6 +27,7 @@ int uptime(void);
 int sync(void);
 int hello(void);
 int getproc(int, struct uproc *);
+int sysinfo(struct sysinfo *);
 
 
 // ulib.c

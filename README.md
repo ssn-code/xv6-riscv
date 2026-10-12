@@ -18,6 +18,12 @@ This document describes the custom system calls and user-space commands added to
 - **Description:** Queries process information for the process matching the given `pid`. On success, populates the user-provided `struct uproc` with process details (`pid`, `ppid`, `state`, memory size `sz`, and process `name`), returning `0`. Returns `-1` if the process is not found or if copying memory fails.
 - **User Program:** `getproctest` (`user/getproctest.c`)
 
+### `sysinfo()` (Syscall #25)
+- **Signature (User):** `int sysinfo(struct sysinfo *info)`
+- **Syscall Number:** `SYS_sysinfo` (25)
+- **Description:** Returns a snapshot of system-wide statistics. `freemem` is the number of free physical-memory bytes available in the page allocator; `nproc` is the number of active (non-`UNUSED`) process-table entries. Returns `0` on success or `-1` when the result cannot be copied to the supplied user address.
+- **User Program:** `sysinfotest` (`user/sysinfotest.c`)
+
 ---
 
 ## 2. Structure Definitions
@@ -33,6 +39,14 @@ struct uproc {
 };
 ```
 
+### `struct sysinfo` (`kernel/types.h`)
+```c
+struct sysinfo {
+  uint64 freemem;  // Free physical memory in bytes
+  uint64 nproc;    // Active process-table entries
+};
+```
+
 ---
 
 ## 3. Added User Commands
@@ -41,6 +55,7 @@ struct uproc {
 | :--- | :--- | :--- |
 | `hello` | Calls `hello()` and demonstrates kernel-to-console output. | Uses the new `hello()` syscall. |
 | `getproctest [pid]` | Looks up one process and also checks that an invalid PID fails. | Uses the new `getproc()` syscall. |
+| `sysinfotest` | Prints free physical memory and the number of active processes. | Uses the new `sysinfo()` syscall. |
 | `ps` | Lists active processes with PID, parent PID, state, memory size, and name. | Calls `getproc()` once for each possible PID. |
 | `edit <filename>` | A small interactive text editor. It loads a file, appends entered lines, saves with `:s`, prints with `:p`, clears with `:c`, and exits with `:q`. | Does **not** add a syscall. It uses existing `open`, `read`, `write`, and `close` syscalls. |
 
@@ -68,6 +83,12 @@ Without an argument, the command queries information about itself. With a PID, i
 
 This command is a simple process viewer. It checks PIDs 1 through 256, calls `getproc()` for each PID, and prints one row for every active process. The output includes PID, parent PID, readable process state, memory size, and program name. Its process information comes entirely from the new `getproc()` syscall.
 
+### `sysinfotest`
+
+**Usage:** `sysinfotest`
+
+This command calls `sysinfo()` and prints the returned system snapshot. `Free memory` is calculated by walking the allocator's free-page list while holding its lock. `Active processes` is calculated by checking each process-table entry while holding that process's lock.
+
 ### `edit <filename>`
 
 **Usage:** `edit <filename>`
@@ -92,18 +113,20 @@ Below is the complete trace of files modified and added for the syscalls and com
 | File Path | Description of Edits |
 | :--- | :--- |
 | **`kernel/types.h`** | Added `struct uproc` definition so it is available across kernel and user space. |
-| **`kernel/syscall.h`** | Added syscall numbers `#define SYS_hello 23` and `#define SYS_getproc 24`. |
-| **`kernel/syscall.c`** | Declared `sys_hello` and `sys_getproc` prototypes, and added `[SYS_hello]` / `[SYS_getproc]` mappings to the `syscalls[]` function pointer array. |
-| **`kernel/defs.h`** | Added kernel function declaration `int kgetproc(int, uint64);` under the `proc.c` section. |
-| **`kernel/sysproc.c`** | Implemented `sys_hello(void)` and `sys_getproc(void)` system call wrapper functions. `sys_getproc` extracts arguments using `argint()` and `argaddr()`. |
-| **`kernel/proc.c`** | Implemented `kgetproc(int pid, uint64 up)` to scan the `proc[NPROC]` table under `p->lock`, populate `struct uproc`, and safely copy data to user memory using `copyout()`. |
-| **`user/user.h`** | Added user-level function prototypes `int hello(void);` and `int getproc(int, struct uproc *);`. |
-| **`user/usys.pl`** | Added `entry("hello");` and `entry("getproc");` to auto-generate Assembly stubs in `usys.S`. |
+| **`kernel/kalloc.c`** | Added `freemem()` to count free physical-memory bytes while holding the allocator lock. |
+| **`kernel/proc.c`** | Implemented `kgetproc(int pid, uint64 up)` to scan the `proc[NPROC]` table under `p->lock`, populate `struct uproc`, and safely copy data to user memory using `copyout()`. Added `nproc()` to count active process-table entries safely. |
+| **`kernel/syscall.h`** | Added syscall numbers `SYS_hello` (23), `SYS_getproc` (24), and `SYS_sysinfo` (25). |
+| **`kernel/syscall.c`** | Declared syscall handlers and added `hello`, `getproc`, and `sysinfo` to the `syscalls[]` dispatch table. |
+| **`kernel/defs.h`** | Declared `kgetproc()`, `freemem()`, and `nproc()` for use across kernel files. |
+| **`kernel/sysproc.c`** | Implemented `sys_hello()`, `sys_getproc()`, and `sys_sysinfo()`. `sys_sysinfo()` collects memory and process counts, then copies the result to user memory. |
+| **`user/user.h`** | Added user-level prototypes for `hello()`, `getproc()`, and `sysinfo()`. |
+| **`user/usys.pl`** | Added entries to auto-generate assembly stubs for `hello`, `getproc`, and `sysinfo`. |
 | **`user/hello.c`** | *(New File)* User program demonstrating the `hello()` system call. |
 | **`user/getproctest.c`** | *(New File)* User program testing `getproc()` for both valid process PIDs and non-existent PIDs. |
+| **`user/sysinfotest.c`** | *(New File)* User program that prints the `sysinfo()` result. |
 | **`user/ps.c`** | *(New File)* Process-listing command built on `getproc()`. |
 | **`user/edit.c`** | *(New File)* Interactive file editor built with existing file syscalls. |
-| **`Makefile`** | Added `$U/_hello`, `$U/_getproctest`, `$U/_ps`, and `$U/_edit` to `UPROGS` so the programs are compiled and included in `fs.img`. |
+| **`Makefile`** | Added `$U/_hello`, `$U/_getproctest`, `$U/_sysinfotest`, `$U/_ps`, and `$U/_edit` to `UPROGS` so the programs are compiled and included in `fs.img`. |
 
 ---
 
@@ -131,6 +154,10 @@ getproc succeeded:
   Size: 16384d bytes
   Name: getproctest
 getproc correctly failed for non-existent PID 9999
+
+$ sysinfotest
+Free memory: 126976000 bytes
+Active processes: 3
 
 $ ps
 PID	PPID	STATE		SIZE	NAME

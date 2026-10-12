@@ -152,6 +152,7 @@ UPROGS=\
 	$U/_sync\
 	$U/_hello\
 	$U/_getproctest\
+	$U/_sysinfotest\
 	$U/_ps\
 	$U/_edit\
 

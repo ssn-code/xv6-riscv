@@ -727,3 +727,20 @@ kgetproc(int pid, uint64 up)
   }
   return -1;
 }
+
+// Return the number of process-table entries that are in use.
+uint64
+nproc(void)
+{
+  struct proc *p;
+  uint64 n;
+
+  n = 0;
+  for (p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if (p->state != UNUSED)
+      n++;
+    release(&p->lock);
+  }
+  return n;
+}
