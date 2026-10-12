@@ -2,6 +2,18 @@
 
 This document describes the custom system calls and user-space commands added to this xv6-RISCV codebase. It also explains which commands use the new syscalls and which use xv6's existing file-system interface.
 
+The custom syscall numbers are:
+
+| Number | Name | User command or test |
+| :---: | :--- | :--- |
+| 23 | `hello()` | `hello` |
+| 24 | `getproc()` | `getproctest`, `ps` |
+| 25 | `sysinfo()` | `sysinfotest` |
+| 26 | `getppid()` | `getppid` |
+| 27 | `trace()` | `trace <mask> <command> [args ...]` |
+| 28 | `history()` | `history <syscall-number>` |
+| 29 | `sleep()` | `sleep <ticks>` |
+
 ---
 
 ## 1. Added System Calls
@@ -275,7 +287,7 @@ Below is the complete trace of files modified and added for the syscalls and com
 | **`user/sleep.c`** | *(New File)* Waits for a requested number of timer ticks. |
 | **`user/ps.c`** | *(New File)* Process-listing command built on `getproc()`. |
 | **`user/edit.c`** | *(New File)* Interactive file editor built with existing file syscalls. |
-| **`Makefile`** | Adds `$U/_hello`, `$U/_getppid`, `$U/_getproctest`, `$U/_sysinfotest`, `$U/_ps`, and `$U/_edit` to `UPROGS` so the programs are compiled and included in `fs.img`. |
+| **`Makefile`** | Adds the custom-syscall commands `$U/_hello`, `$U/_getppid`, `$U/_getproctest`, `$U/_sysinfotest`, `$U/_ps`, `$U/_trace`, `$U/_history`, and `$U/_sleep` (plus `$U/_edit`) to `UPROGS` so they are compiled and included in `fs.img`. |
 
 ---
 
